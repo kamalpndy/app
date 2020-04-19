@@ -32,7 +32,8 @@ public class EmployeeDaoImpl implements  EmployeeDao {
 	public void updateEmployee(int index,EmployeeVO employee) {
 		EmployeeVO employeeToBeUpdated = list.get(index);
 		if(employeeToBeUpdated.getEmployeId() == employee.getEmployeId()) {
-			list.add(employee);
+			employeeToBeUpdated.setEmployeName(employee.getEmployeName());
+			list.set(index, employeeToBeUpdated);
 		}
 	}
 
