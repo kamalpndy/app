@@ -18,7 +18,7 @@ import lombok.ToString;
 @EqualsAndHashCode
 public class EmployeeVO {
  
-	private @NotNull int employeId;
+    private @NotNull int employeId;
     private @NonNull String employeName;
     private @NonNull String age;
     private @NonNull String address;
