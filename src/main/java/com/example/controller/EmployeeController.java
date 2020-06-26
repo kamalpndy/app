@@ -1,6 +1,9 @@
 package com.example.controller;
 
+import java.time.ZonedDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.IntStream;
 
 import javax.validation.Valid;
 
@@ -20,6 +23,7 @@ import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import com.example.model.employee.EmployeeVO;
+import com.example.ratelimiter.OptumApiRateLimiter;
 import com.example.service.EmployeeService;
 
 import io.swagger.annotations.Api;
@@ -38,6 +42,8 @@ public class EmployeeController {
 	
 	@Autowired
 	EmployeeService employeeService;
+	@Autowired
+	OptumApiRateLimiter optumApiRateLimiter;
 	
 	@GetMapping("/helloworld")
 	public String  hello(){
@@ -69,6 +75,22 @@ public class EmployeeController {
 		employeeService.saveEmployee(employeeVO);	
 	}
 	
+	@GetMapping("/addEmployee")
+	public void addEmploye(){
+	List<EmployeeVO> l = new ArrayList<EmployeeVO>();
+			
+		for(int i=0;i<1000;i++) {
+			EmployeeVO v =  new EmployeeVO();
+			v.setEmployeId(i);
+			v.setEmployeName("Ashish "+i);
+			int age = 32+i;
+			v.setAge(String.valueOf(age));
+			v.setAddress("D-100");
+			 l.add(v);
+		}
+		employeeService.saveEmployee(l);
+	}
+	
 	@ApiOperation(value = "Update an employee")
 	@PutMapping("/updateEmployee/{index}")
 	public void updateEmployee(
@@ -94,12 +116,21 @@ public class EmployeeController {
 	@GetMapping("/employeewebclient")
 	public Flux<EmployeeVO> EmployeeWebClient() {
 		
-		WebClient client = WebClient.create("http://localhost:8585");
-
-		 Flux<EmployeeVO> employeeFlux = client.get()
-		      .uri("/employeelist").accept(MediaType.APPLICATION_JSON)
-		      .retrieve().bodyToFlux(EmployeeVO.class);		  
-		    return employeeFlux;
+		WebClient client = WebClient.create("http://localhost:8080");
+		List<EmployeeVO> employeeVOList = employeeService.getEmploye().collectList().block();
+		System.out.println(employeeVOList.size());
+		long startTime = ZonedDateTime.now().getSecond();
+		System.out.println(startTime);
+		employeeVOList.parallelStream().parallel().forEach(i -> {
+			 optumApiRateLimiter.waitForLock();
+			client.get()
+				      .uri("/api/v1/employeelist").accept(MediaType.APPLICATION_JSON)
+				      .retrieve().bodyToFlux(EmployeeVO.class);	
+			});
+		
+		    long elapsedTimeSeconds = ZonedDateTime.now().getSecond() - startTime;
+			System.out.println("Time taken to update notification db: " + elapsedTimeSeconds);
+		    return null;
 		
 	}
 	
